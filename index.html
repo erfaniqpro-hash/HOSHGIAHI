@@ -362,6 +362,7 @@ const State = {
   view: "auth",
   pendingIdentify: null,  // holds partial AI identification state
   toastTimer: null,
+  aiConfig: { apiKey: "", baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini" }, // وارد شده توسط کاربر در همین جلسه — هرگز در فایل ذخیره نمی‌شود
 };
 
 const CARE_LABELS = {
@@ -645,19 +646,58 @@ function renderIdentifyResult(plant, confidence, isDemoImage) {
   $("#btnAddPlant").onclick = () => addMyPlant(plant);
 }
 
-function runChat() {
+async function runChat() {
   const input = $("#chatText");
   const text = input.value.trim();
   if (!text) return;
   const log = $("#chatLog");
   log.insertAdjacentHTML("beforeend", `<div class="msg me">${escapeHtml(text)}</div>`);
   input.value = "";
-  const reply = mockPlantAnswer(text);
-  setTimeout(() => {
-    log.insertAdjacentHTML("beforeend", `<div class="msg ai">${reply}</div>`);
-    log.scrollTop = log.scrollHeight;
-  }, 400);
   log.scrollTop = log.scrollHeight;
+
+  if (State.aiConfig.apiKey) {
+    log.insertAdjacentHTML("beforeend", `<div class="msg ai" id="typingMsg">در حال تایپ...</div>`);
+    log.scrollTop = log.scrollHeight;
+    try {
+      const reply = await callAiApi(text);
+      $("#typingMsg")?.remove();
+      log.insertAdjacentHTML("beforeend", `<div class="msg ai">${escapeHtml(reply)}</div>`);
+    } catch (err) {
+      $("#typingMsg")?.remove();
+      log.insertAdjacentHTML("beforeend", `<div class="msg ai">⚠️ خطا در ارتباط با هوش مصنوعی (${escapeHtml(err.message)}) — پاسخ نمایشی: ${mockPlantAnswer(text)}</div>`);
+    }
+    log.scrollTop = log.scrollHeight;
+  } else {
+    const reply = mockPlantAnswer(text);
+    setTimeout(() => {
+      log.insertAdjacentHTML("beforeend", `<div class="msg ai">${reply}</div>`);
+      log.scrollTop = log.scrollHeight;
+    }, 400);
+  }
+}
+
+async function callAiApi(userText) {
+  const { apiKey, baseUrl, model } = State.aiConfig;
+  const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: "تو یک دستیار متخصص نگهداری گیاهان خانگی هستی. به زبان فارسی، کوتاه و کاربردی پاسخ بده." },
+        { role: "user", content: userText },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => "");
+    throw new Error(`${res.status} ${errBody.slice(0, 120)}`);
+  }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || "پاسخی دریافت نشد.";
 }
 
 function mockPlantAnswer(text) {
@@ -953,11 +993,44 @@ function renderAdmin() {
         <button class="btn-mini">⏸️ مسدودسازی موقت</button>
         <button class="btn-mini">⛔ مسدودسازی دائم</button>
       </div>
+      <h4>🔔 تست نوتیفیکیشن</h4>
+      <p class="muted small">یک اعلان سیستمی واقعی بفرست تا مطمئن بشی درست کار می‌کنه.</p>
+      <div class="admin-actions">
+        <button class="btn-primary" id="btnAdminNotifTest">📣 ارسال نوتیفیکیشن آزمایشی</button>
+      </div>
+      <h4>🧠 تنظیمات هوش مصنوعی (چت آزاد)</h4>
+      <p class="muted small">کلید API را فقط داخل همین مرورگر و برای همین جلسه نگه می‌داریم — در فایل ذخیره نمی‌شود و با کسی به اشتراک گذاشته نمی‌شود.</p>
+      <div style="display:flex; flex-direction:column; gap:8px; margin:10px 0;">
+        <input id="cfgKey" type="password" placeholder="API Key" value="${State.aiConfig.apiKey ? "••••••••" : ""}" />
+        <input id="cfgBase" type="text" placeholder="Base URL" value="${State.aiConfig.baseUrl}" />
+        <input id="cfgModel" type="text" placeholder="Model" value="${State.aiConfig.model}" />
+      </div>
+      <div class="admin-actions">
+        <button class="btn-primary" id="btnSaveAi">ذخیره تنظیمات</button>
+        <button class="btn-mini" id="btnClearAi">حذف کلید</button>
+      </div>
       <button class="btn-primary" id="btnBack">بازگشت به پروفایل</button>
     </section>
   `;
   $("#btnBack").onclick = () => goto("profile");
   $$(".admin-actions .btn-mini").forEach((b) => b.onclick = () => toast("اقدام ثبت شد (نمایشی)"));
+  $("#btnAdminNotifTest").onclick = async () => {
+    if (NotifEngine.permission !== "granted") await NotifEngine.requestPermission();
+    NotifEngine.fire("📣 پیام از پنل مدیریت", "این یک نوتیفیکیشن آزمایشی ارسال‌شده توسط ادمین است.", "admin-test-" + Date.now());
+  };
+  $("#btnSaveAi").onclick = () => {
+    const keyField = $("#cfgKey").value.trim();
+    if (keyField && keyField !== "••••••••") State.aiConfig.apiKey = keyField;
+    State.aiConfig.baseUrl = $("#cfgBase").value.trim() || "https://api.openai.com/v1";
+    State.aiConfig.model = $("#cfgModel").value.trim() || "gpt-4o-mini";
+    toast("✅ تنظیمات هوش مصنوعی ذخیره شد");
+    renderAdmin();
+  };
+  $("#btnClearAi").onclick = () => {
+    State.aiConfig.apiKey = "";
+    toast("🗑️ کلید API حذف شد");
+    renderAdmin();
+  };
 }
 
 document.addEventListener("DOMContentLoaded", boot);
