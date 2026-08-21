@@ -2,8 +2,9 @@
    وظیفه: امکان نصب PWA + نمایش نوتیفیکیشن واقعی در نوار اعلان سیستم
    (از طریق self.registration.showNotification، نه new Notification()). */
 
-const CACHE_NAME = "hoosh-giah-v3";
+const CACHE_NAME = "hoosh-giah-v4";
 const APP_SHELL = [
+  "./index.html",
   "./plant-app.html",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
