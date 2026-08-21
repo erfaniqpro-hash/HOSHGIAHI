@@ -2,7 +2,8 @@
   "name": "هوش گیاهی — اکوسیستم هوشمند گیاهان",
   "short_name": "هوش گیاهی",
   "description": "دستیار هوشمند نگهداری گیاهان خانگی",
-  "start_url": "./index.html",
+  "id": "/plant-app.html",
+  "start_url": "./plant-app.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
@@ -11,23 +12,8 @@
   "dir": "rtl",
   "lang": "fa",
   "icons": [
-    {
-      "src": "https://em-content.zobj.net/source/apple/354/seedling_1f331.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "https://em-content.zobj.net/source/apple/354/seedling_1f331.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "https://em-content.zobj.net/source/apple/354/seedling_1f331.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    }
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
